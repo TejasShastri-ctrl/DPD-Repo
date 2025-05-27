@@ -1,0 +1,138 @@
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchModeldataByUserId,
+  fetchModeldataVersions,
+  createNewModeldata,
+  addModeldataVersion,
+  clearSelectedModel,
+} from '../Redux/Modeldata/ModeldataSlice';
+import ModelDataCard from '../components/ModelDataCard';
+
+function ProductionDashboard() {
+  const dispatch = useDispatch();
+  const authUser = useSelector(state => state.auth.user);
+  const { list: models, selectedModel, versionHistory, loading, error } = useSelector(state => state.modeldata);
+
+  
+  const [newModelName, setNewModelName] = useState('');
+  const [newModelFile, setNewModelFile] = useState(null);
+  const [uploadVersionFile, setUploadVersionFile] = useState(null);
+
+  useEffect(() => {
+    if (authUser?.id) {
+      dispatch(fetchModeldataByUserId(authUser.id));
+      dispatch(clearSelectedModel());
+    }
+  }, [authUser, dispatch]);
+
+  const onSelectModel = (model) => {
+    dispatch(clearSelectedModel());
+    dispatch(fetchModeldataVersions(model.id));
+    // Could dispatch an action to set selectedModel if needed explicitly
+  };
+
+  const onCreateModel = () => {
+    if (!newModelName || !newModelFile) {
+      alert("Please provide model name and file.");
+      return;
+    }
+    dispatch(createNewModeldata({ userId: authUser.id, name: newModelName, file: newModelFile }))
+      .unwrap()
+      .then(() => {
+        setNewModelName('');
+        setNewModelFile(null);
+        dispatch(fetchModeldataByUserId(authUser.id)); // Refresh list
+      })
+      .catch(err => alert("Failed to create model: " + err));
+  };
+
+  const onAddVersion = () => {
+    if (!uploadVersionFile || !selectedModel) {
+      alert("Select a model and file to upload version.");
+      return;
+    }
+    dispatch(addModeldataVersion({ modeldataId: selectedModel.id, file: uploadVersionFile }))
+      .unwrap()
+      .then(() => {
+        dispatch(fetchModeldataVersions(selectedModel.id)); // Refresh versions
+        setUploadVersionFile(null);
+      })
+      .catch(err => alert("Failed to upload version: " + err));
+  };
+
+  return (
+    <div className="p-6">
+      <h1 className="text-3xl font-bold mb-6">Production Dashboard</h1>
+
+      <section className="mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Your Models</h2>
+        {loading && <p>Loading models...</p>}
+        {error && <p className="text-red-600">{error}</p>}
+
+        {models.length === 0 && !loading && <p>No models found. Create a new one below.</p>}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {models.map(model => (
+            <ModelDataCard
+              key={model.id}
+              model={model}
+              onClick={() => onSelectModel(model)}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Create New Model</h2>
+        <input
+          type="text"
+          placeholder="Model Name"
+          value={newModelName}
+          onChange={e => setNewModelName(e.target.value)}
+          className="border border-gray-300 rounded p-2 mb-2 w-full max-w-sm"
+        />
+        <input
+          type="file"
+          onChange={e => setNewModelFile(e.target.files[0])}
+          accept=".stl,.obj,.glb,.gltf"
+          className="mb-2"
+        />
+        <button
+          onClick={onCreateModel}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Create Model
+        </button>
+      </section>
+
+      {selectedModel && (
+        <section>
+          <h2 className="text-2xl font-semibold mb-4">Versions for {selectedModel.name}</h2>
+          <ul className="mb-4 list-disc list-inside">
+            {versionHistory.map(v => (
+              <li key={v.id}>
+                Version {v.versionNumber} - Uploaded: {new Date(v.timestamp).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+
+          <input
+            type="file"
+            onChange={e => setUploadVersionFile(e.target.files[0])}
+            accept=".stl,.obj,.glb,.gltf"
+            className="mb-2"
+          />
+          <button
+            onClick={onAddVersion}
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          >
+            Add New Version
+          </button>
+        </section>
+      )}
+    </div>
+  );
+}
+
+export default ProductionDashboard;

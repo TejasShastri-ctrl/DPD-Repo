@@ -1,0 +1,165 @@
+import React, { useState, useEffect } from "react";
+// import { getAllModeldata, createNewModel } from "../api/MD";
+import ProductCard from "../components/ProductCard";
+import VersionModal from "../components/VersionModal";
+
+function Home() {
+  const [userId, setUserId] = useState(null);
+  const [modeldataList, setModeldataList] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [formData, setFormData] = useState({ name: "", file: null });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  //! user check
+  console.log("Current User : ", localStorage.getItem("user"));
+
+  // Parse userId from localStorage once
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        if (user && user.id) setUserId(user.id);
+      } catch (err) {
+        console.error("Failed to parse user from localStorage:", err);
+      }
+    }
+  }, []);
+
+  // Fetch models function to be called on demand
+  const fetchModels = async () => {
+    if (!userId) {
+      setError("User not logged in.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const allModels = await getAllModeldata();
+      const userModels = allModels.filter(
+        (model) => model.appuser && model.appuser.id === userId
+      );
+      setModeldataList(userModels);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to fetch models.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === "file") setFormData((prev) => ({ ...prev, file: files[0] }));
+    else setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!formData.name || !formData.file) {
+      setError("Please provide both a name and a file for the model.");
+      return;
+    }
+    if (!userId) {
+      setError("User not logged in.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      await createNewModel({
+        userId,
+        name: formData.name,
+        file: formData.file,
+      });
+      setFormData({ name: "", file: null });
+      // Optionally refresh after creation:
+      await fetchModels();
+    } catch (err) {
+      console.error(err);
+      setError("Error creating model: " + (err.message || "Unknown error"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className="p-6">
+      <h2 className="text-2xl font-semibold mb-6">Your Models</h2>
+
+      {/* Refresh Models Button */}
+      <button
+        onClick={fetchModels}
+        disabled={loading}
+        className="mb-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md"
+      >
+        {loading ? "Loading..." : "Refresh Models"}
+      </button>
+
+      {/* Model Creation Form */}
+      <section className="mb-8 max-w-md border p-4 rounded-md shadow-sm bg-white">
+        <h3 className="text-xl font-semibold mb-4">Create New Model</h3>
+        <form onSubmit={handleSubmit} noValidate>
+          <input
+            type="text"
+            name="name"
+            placeholder="Model Name"
+            value={formData.name}
+            onChange={handleInputChange}
+            className="w-full mb-4 px-3 py-2 border rounded-md"
+            required
+          />
+          <input
+            type="file"
+            name="file"
+            accept=".stl,.obj,.fbx,.glb,.gltf"
+            onChange={handleInputChange}
+            className="w-full mb-4"
+            required
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md"
+          >
+            {loading ? "Creating..." : "Create Model"}
+          </button>
+          {error && <p className="mt-2 text-red-600">{error}</p>}
+        </form>
+      </section>
+
+      {/* Models Display */}
+      {loading && !modeldataList.length ? (
+        <p>Loading your models...</p>
+      ) : (
+        <div className="flex gap-6 flex-wrap">
+          {modeldataList.length === 0 ? (
+            <p>No models found. Create one above or refresh.</p>
+          ) : (
+            modeldataList.map((model, idx) => (
+              <ProductCard
+                key={model.id || idx}
+                product={model}
+                onClick={setSelectedProduct}
+              />
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Version Modal */}
+      {selectedProduct && (
+        <VersionModal
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
+    </main>
+  );
+}
+
+export default Home;
