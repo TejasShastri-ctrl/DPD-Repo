@@ -39,26 +39,6 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* Team Section */}
-      <section className="max-w-5xl mx-auto mb-24">
-        <h2 className="text-3xl font-bold mb-12 text-center">Team</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
-          {[
-            { name: 'Tejas Shastri', role: '22210110'},
-            { name: 'Krishnapriya Bandewar', role: '22211528'},
-            { name: 'Sumeer Mehta', role: '22211576'},
-          ].map((member) => (
-            <div key={member.name} className="bg-white shadow-md p-6 flex flex-col items-center text-center hover:shadow-lg transition-shadow">
-              <h3 className="text-xl font-semibold">{member.name}</h3>
-              <p className="text-indigo-600 font-medium mb-3">{member.role}</p>
-              <p className="text-gray-600 text-sm">
-                TY, CSE-AIML
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Technology Stack Section */}
       <section className="max-w-5xl mx-auto text-center">
         <h2 className="text-3xl font-bold mb-12">Technology Stack</h2>
